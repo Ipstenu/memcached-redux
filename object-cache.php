@@ -2,7 +2,7 @@
 /*
 Plugin Name: Memcached Redux
 Description: The real Memcached (not Memcache) backend for the WP Object Cache.
-Version: 0.1.4
+Version: 0.1.5
 Plugin URI: http://wordpress.org/extend/plugins/memcached/
 Author: Scott Taylor - uses code from Ryan Boren, Denis de Bernardy, Matt Martz, Mike Schroder
 
@@ -10,7 +10,7 @@ Install this file to wp-content/object-cache.php
 */
 
 if ( !defined( 'WP_CACHE_KEY_SALT' ) ) {
-	define( 'WP_CACHE_KEY_SALT', substr(md5(dirname(__FILE__)),7));
+	define( 'WP_CACHE_KEY_SALT', '' );
 }
 
 if ( class_exists( 'Memcached' ) ):
@@ -51,10 +51,10 @@ function wp_cache_flush() {
 	return $wp_object_cache->flush();
 }
 
-function wp_cache_get( $key, $group = '' ) {
+function wp_cache_get( $key, $group = '', $force = false, &$found = null ) {
 	global $wp_object_cache;
 
-	return $wp_object_cache->get( $key, $group );
+	return $wp_object_cache->get( $key, $group, $force, $found );
 }
 
 /**
@@ -149,7 +149,7 @@ class WP_Object_Cache {
 		$result = $mc->add( $key, $data, $expire );
 
 		if ( false !== $result ) {
-			@ ++$this->stats['add'];
+			++$this->stats['add'];
 			$this->group_ops[$group][] = "add $id";
 			$this->cache[$key] = $data;
 		}
@@ -203,7 +203,7 @@ class WP_Object_Cache {
 
 		$result = $mc->delete( $key );
 
-		@ ++$this->stats['delete'];
+		++$this->stats['delete'];
 		$this->group_ops[$group][] = "delete $id";
 
 		if ( false !== $result )
@@ -223,11 +223,13 @@ class WP_Object_Cache {
 		return $ret;
 	}
 
-	function get( $id, $group = 'default' ) {
+	function get( $id, $group = 'default', $force = false, &$found = null ) {
 		$key = $this->key( $id, $group );
 		$mc =& $this->get_mc( $group );
+		$found = false;
 
-		if ( isset( $this->cache[$key] ) ) {
+		if ( isset( $this->cache[$key] ) && ( !$force || in_array( $group, $this->no_mc_groups ) ) ) {
+			$found = true;
 			if ( is_object( $this->cache[$key] ) )
 				$value = clone $this->cache[$key];
 			else
@@ -236,12 +238,16 @@ class WP_Object_Cache {
 			$this->cache[$key] = $value = false;
 		} else {
 			$value = $mc->get( $key );
-			if ( empty( $value ) || ( is_integer( $value ) && -1 == $value ) )
+			if ( empty( $value ) || ( is_integer( $value ) && -1 == $value ) ){
 				$value = false;
+				$found = $mc->getResultCode() !== Memcached::RES_NOTFOUND;
+			} else {
+				$found = true;
+			}
 			$this->cache[$key] = $value;
 		}
 
-		@ ++$this->stats['get'];
+		++$this->stats['get'];
 		$this->group_ops[$group][] = "get $id";
 
 		if ( 'checkthedatabaseplease' === $value ) {
@@ -285,7 +291,7 @@ class WP_Object_Cache {
 			$return = array_merge( $return, $joined );
 		}
 
-		@ ++$this->stats['get_multi'];
+		++$this->stats['get_multi'];
 		$this->group_ops[$group][] = "get_multi $id";
 		$this->cache = array_merge( $this->cache, $return );
 		return array_values( $return );
@@ -415,7 +421,16 @@ class WP_Object_Cache {
 		return $this->mc['default'];
 	}
 
-	function WP_Object_Cache() {
+	function __construct() {
+
+		$this->stats = array(
+			'get'        => 0,
+			'get_multi'  => 0,
+			'add'        => 0,
+			'set'        => 0,
+			'delete'     => 0,
+		);
+		
 		global $memcached_servers;
 
 		if ( isset( $memcached_servers ) )
