@@ -203,11 +203,11 @@ class WP_Object_Cache {
 
 		$result = $mc->delete( $key );
 
-		++$this->stats['delete'];
-		$this->group_ops[$group][] = "delete $id";
-
-		if ( false !== $result )
+		if ( false !== $result ) {
+			++$this->stats['delete'];
+			$this->group_ops[$group][] = "delete $id";
 			unset( $this->cache[$key] );
+		}
 
 		return $result;
 	}
