@@ -203,11 +203,11 @@ class WP_Object_Cache {
 
 		$result = $mc->delete( $key );
 
-		++$this->stats['delete'];
-		$this->group_ops[$group][] = "delete $id";
-
-		if ( false !== $result )
+		if ( false !== $result ) {
+			++$this->stats['delete'];
+			$this->group_ops[$group][] = "delete $id";
 			unset( $this->cache[$key] );
+		}
 
 		return $result;
 	}
@@ -247,8 +247,12 @@ class WP_Object_Cache {
 			$this->cache[$key] = $value;
 		}
 
-		++$this->stats['get'];
-		$this->group_ops[$group][] = "get $id";
+		if ( $found ) {
+			++$this->stats['get'];
+			$this->group_ops[$group][] = "get $id";
+		} else {
+			++$this->stats['miss'];
+		}
 
 		if ( 'checkthedatabaseplease' === $value ) {
 			unset( $this->cache[$key] );
@@ -429,6 +433,7 @@ class WP_Object_Cache {
 			'add'        => 0,
 			'set'        => 0,
 			'delete'     => 0,
+			'miss'       => 0,
 		);
 		
 		global $memcached_servers;
@@ -468,7 +473,7 @@ class WP_Object_Cache {
 		}
 
 		$this->cache_hits =& $this->stats['get'];
-		$this->cache_misses =& $this->stats['add'];
+		$this->cache_misses =& $this->stats['miss'];
 	}
 }
 else: // No Memcached
