@@ -2,8 +2,8 @@
 Contributors: wonderboymusic, ryan, sivel, DH-Shredder, Ipstenu
 Tags: cache, Memcached, admin, manage cache, object cache, WP Object Cache
 Requires at least: 3.0
-Tested up to: 4.7
-Stable Tag: 0.1.5
+Tested up to: 4.9
+Stable Tag: 0.1.6
 
 Uses the Memcached class (not the Memcache class) to implement WP Object Cache
 
@@ -35,6 +35,10 @@ Blog Post: [http://scotty-t.com/2012/06/05/memcached-redux/](http://scotty-t.com
 1. Copy object-cache.php to wp-content
 
 == Changelog ==
+
+= 0.1.6 =
+* Corrected documentation
+* Corrected stats collection (props @johnbillion)
 
 = 0.1.5 =
 * Added support for PHP 7+ by changing to __construct and pre-initializing stats
