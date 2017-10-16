@@ -1,2 +1,3 @@
 # memcached-redux
-Fork of Memcached Redux
+
+Development of Memcached Redux

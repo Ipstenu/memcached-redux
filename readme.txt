@@ -41,7 +41,7 @@ Blog Post: [http://scotty-t.com/2012/06/05/memcached-redux/](http://scotty-t.com
 * Corrected stats collection (props @johnbillion)
 
 = 0.1.5 =
-* Added support for PHP 7+ by changing to __construct and pre-initializing stats
+* Added support for PHP 7+ by changing to `__construct` and pre-initializing stats
 
 = 0.1.3 =
 * Added support for WP_CACHE_KEY_SALT allowing multiple sites to use the same Memcached server.
