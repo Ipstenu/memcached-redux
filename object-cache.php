@@ -2,7 +2,7 @@
 /*
 Plugin Name: Memcached Redux
 Description: The real Memcached (not Memcache) backend for the WP Object Cache.
-Version: 0.1.9
+Version: 0.2
 Plugin URI: https://github.com/Ipstenu/memcached-redux
 Author: Scott Taylor - uses code from Ryan Boren, Denis de Bernardy, Matt Martz, Mike Schroder, Mika Epstein
 
@@ -30,6 +30,7 @@ if ( class_exists( 'Memcached' ) ):
 		switch ( $feature ) {
 			case 'add_multiple':
 			case 'set_multiple':
+			case 'flush_runtime':
 			case 'get_multiple':
 			case 'delete_multiple':
 				return true;
@@ -93,10 +94,10 @@ if ( class_exists( 'Memcached' ) ):
 		return $wp_object_cache->get( $key, $group, $force, $found );
 	}
 
-	function wp_cache_get_multiple( $keys, $group = '' ) {
+	function wp_cache_get_multiple( $keys, $group = '', $force = false ) {
 		global $wp_object_cache;
 
-		return $wp_object_cache->get_multiple( $keys, $group );
+		return $wp_object_cache->get_multiple( $keys, $group, $force );
 	}
 
 	/**
@@ -164,6 +165,13 @@ if ( class_exists( 'Memcached' ) ):
 
 		$wp_object_cache->add_non_persistent_groups( $groups );
 	}
+
+	function wp_cache_flush_runtime() {
+		global $wp_object_cache;
+
+		return $wp_object_cache->flush_runtime();
+	}
+
 
 	class WP_Object_Cache {
 		var $global_groups = array();
@@ -255,6 +263,13 @@ if ( class_exists( 'Memcached' ) ):
 			// Silence is Golden.
 		}
 
+		function flush_runtime() {
+			$this->cache     = array();
+			$this->group_ops = array();
+
+			return true;
+		}
+
 		function delete( $id, $group = 'default' ) {
 			$key = $this->key( $id, $group );
 
@@ -341,46 +356,14 @@ if ( class_exists( 'Memcached' ) ):
 			return $value;
 		}
 
-		public function get_multiple( $keys, $group = 'default' ) {
-			$return = array();
-			$gets   = array();
-			foreach ( $keys as $i => $values ) {
-				$mc     =& $this->get_mc( $group );
-				$values = (array) $values;
-				if ( empty( $values[1] ) ) {
-					$values[1] = 'default';
-				}
+		public function get_multiple( $keys, $group = 'default', $force = false) {
+			$values = array();
 
-				list( $id, $group ) = (array) $values;
-				$key = $this->key( $id, $group );
-
-				if ( isset( $this->cache[ $key ] ) ) {
-
-					if ( is_object( $this->cache[ $key ] ) ) {
-						$return[ $key ] = clone $this->cache[ $key ];
-					} else {
-						$return[ $key ] = $this->cache[ $key ];
-					}
-
-				} else if ( in_array( $group, $this->no_mc_groups ) ) {
-					$return[ $key ] = false;
-
-				} else {
-					$gets[ $key ] = $key;
-				}
+			foreach ( $keys as $key ) {
+				$values[ $key ] = $this->get( $key, $group, $force );
 			}
 
-			if ( ! empty( $gets ) ) {
-				$results = $mc->getMulti( $gets, $null, Memcached::GET_PRESERVE_ORDER );
-				$joined  = array_combine( array_keys( $gets ), array_values( $results ) );
-				$return  = array_merge( $return, $joined );
-			}
-
-			++ $this->stats['get_multi'];
-			$this->group_ops[ $group ][] = "get_multi $id";
-			$this->cache                 = array_merge( $this->cache, $return );
-
-			return array_values( $return );
+			return $values;
 		}
 
 		function get_multi( $keys, $group = 'default' ) {
@@ -667,3 +650,4 @@ else: // No Memcached
 	}
 
 endif;
+
