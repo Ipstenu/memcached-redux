@@ -2,7 +2,7 @@
 /*
 Plugin Name: Memcached Redux
 Description: The real Memcached (not Memcache) backend for the WP Object Cache.
-Version: 0.2
+Version: 0.2.1
 Plugin URI: https://github.com/Ipstenu/memcached-redux
 Author: Scott Taylor - uses code from Ryan Boren, Denis de Bernardy, Matt Martz, Mike Schroder, Mika Epstein
 
@@ -462,39 +462,14 @@ if ( class_exists( 'Memcached' ) ):
 			return $result;
 		}
 
-		function set_multiple( $items, $group = 'default', $expire = 0 ) {
-			$sets   = array();
-			$mc     =& $this->get_mc( $group );
-			$expire = ( $expire == 0 ) ? $this->default_expiration : $expire;
+		public function set_multiple( array $data, $group = '', $expire = 0 ) {
+			$values = array();
 
-			foreach ( $items as $i => $item ) {
-				if ( empty( $item[2] ) ) {
-					$item[2] = 'default';
-				}
-
-				list( $id, $data, $group ) = $item;
-
-				$key = $this->key( $id, $group );
-				if ( isset( $this->cache[ $key ] ) && ( 'checkthedatabaseplease' === $this->cache[ $key ] ) ) {
-					continue;
-				}
-
-				if ( is_object( $data ) ) {
-					$data = clone $data;
-				}
-
-				$this->cache[ $key ] = $data;
-
-				if ( in_array( $group, $this->no_mc_groups ) ) {
-					continue;
-				}
-
-				$sets[ $key ] = $data;
+			foreach ( $data as $key => $value ) {
+				$values[ $key ] = $this->set( $key, $value, $group, $expire );
 			}
 
-			if ( ! empty( $sets ) ) {
-				$mc->setMulti( $sets, $expire );
-			}
+			return $values;
 		}
 
 		function set_multi( $items, $expire = 0, $group = 'default' ) {
